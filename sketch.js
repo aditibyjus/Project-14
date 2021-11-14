@@ -1,194 +1,148 @@
-var bow, arrow, background, red, green, blue, pink;
+var restartImg, groundImage, obstacle;
+var jump, girl, girl_stop, girl_running, girl_jump,girl; 
+var obstaclesGroup, walkCG, stopGroup;
 var score;
-var bowImage, arrowImage, green_balloonImage, red_balloonImage, pink_balloonImage ,blue_balloonImage, backgroundImage;
-var obstacleGroup;
+var path;
+var jumpCG;
+
+var PLAY = 1;
+var END = 0;
+var gameState = PLAY;
 
 function preload(){
-  score = 0;
-  backgroundImage = loadImage("background0.png");
-  arrowImage = loadImage("arrow0.png");
-  bowImage = loadImage("bow0.png");
-  red_balloonImage = loadImage("red_balloon0.png");
-  pink_balloonImage = loadImage("pink_balloon0.png");
-  green_balloonImage = loadImage("green_balloon0.png");
-  blue_balloonImage = loadImage("blue_balloon0.png");
+    girl_running = loadAnimation("walk.png","run.png");
+    girl_stop = loadImage("walk.png");
+    groundImage = loadImage("background.png");   
+     
+    obstacle = loadImage("obstacle.png");    
+    restartImg = loadImage("restart.png");    
 }
 
-function setup() {
-  createCanvas(400, 400);
-  
-  //creating background
-  scene = createSprite(0,0,400,400);
-  scene.addImage(backgroundImage);
-  scene.scale = 2.5
-  
-  // creating bow to shoot arrow
-  bow = createSprite(380,220,20,50);
-  bow.addImage(bowImage); 
-  bow.scale = 1; 
+function setup() {  
+    createCanvas(800,500);
+    // Moving background
+    path=createSprite(200,150);
+    path.addImage(groundImage);
+    path.velocityX = -1;
+    path.scale = 1;
+    
+    girl = createSprite(100,200);
+    girl.addAnimation("running", girl_running);
+    girl.scale = 0.15;
+    girl.velocityX = 2;
 
-  obstacleGroup = new Group();
-  
+    obstaclesGroup = createGroup();
+    stopCG = createGroup();
+    score = 0;
 }
 
 function draw() {
- background(0);
-  // moving ground
-    scene.velocityX = -3 
+    background(0);
+    drawSprites();
 
-    if (scene.x < 0) {
-      scene.x = scene.width/2;
+    text("Score: "+ score, 300,50);
+    //text("Path.x: "+ path.x, 400,50);
+
+    if(gameState === PLAY){
+        //move the ground
+        path.velocityX = -1;
+
+        if (girl.x > width){
+            girl.x = 20;
+        } 
+
+        if (path.x < 100){
+            path.x = width/3;
+        }      
+        
+        if(girl.y < 50)
+        {
+            girl.y = 450;
+        }
+
+        if(girl.y > 450)
+        {
+            girl.y = 50;
+        }
+
+        //spawn obstacles on the ground
+        spawnObstacles(); 
+
+        if(obstaclesGroup.isTouching(girl)){
+            gameState = END;  
+        }
+
+        if(keyDown("up")) {
+            startframe = frameCount;
+            girl.velocityY = -4;
+          }
+
+        if(keyDown("down")) {
+              girl.velocityY = 4;
+          }
+        
+        if(keyDown("space")) {
+              girl.velocityY = 0;
+          }
     }
-  
-  //moving bow
-  bow.y = World.mouseY;
-  
-   // release arrow when space key is pressed
-  if (keyDown("space")) {
-    createArrow();  
-  }
-  
-  //creating continous balloons
-  var select_balloon = Math.round(random(1,4));
-  
-  if (World.frameCount % 50 == 0) {
-    // console.log("select " + select_balloon);
+    else if (gameState === END) {
+        path.velocityX = 0;
+        girl.velocityX = 0;
+        girl.velocityY = 0;
+        //walkCG.destroyEach();
+        stopGirl();
+        obstaclesGroup.destroyEach();
+        text("Press space key to Restart the game!", 500,200);
 
-    redBalloon2();
-   /*
-    if (select_balloon == 1) {
-      redBalloon();
-      console.log("RED");
-    } else if (select_balloon == 1) {
-      redBalloon2();
-      console.log("GREEN");
-    } else if (select_balloon == 3) {
-      blueBalloon();
-      console.log("BLUE");
-    } else {
-      pinkBalloon();
-      console.log("PINK");
+        if(keyDown("space")) {
+            reset();
+          }
     }
-  */
-  
-  }
 
-  if(obstacleGroup.isTouching(red))
-  {
-    score = score + 1;  
-    red.scale = 0;
-    red.velocityX = 0;
-    red.destroy();
-    arrow.destroy();
-  }
-
-  drawSprites();
-  textSize(20);
-  text("Score:" + score, 150, 40);
 }
 
+function reset(){
+    gameState = PLAY;
+    stopCG.destroyEach();
+    
 
-// Creating  arrows for bow
- function createArrow() {
-  arrow = createSprite(100, 100, 60, 10);
-  arrow.addImage(arrowImage);
-  arrow.x = 360;
-  arrow.y=bow.y;
-  arrow.velocityX = -4;
-  arrow.lifetime = 100;
-  arrow.scale = 0.3;
-  obstacleGroup.add(arrow);
-}
+    //girl = createSprite(100,200);
+    //girl.addAnimation("running", girl_running);
+    //girl.scale = 0.15;
+    path.velocityX = -1;
+    girl.velocityX = 2;
 
-function pinkBalloon() {
-  pink = createSprite(0,Math.round(random(20, 370)), 10, 10);
-  pink.addImage(pink_balloonImage);
-  pink.velocityX = 3;
-  pink.lifetime = 150;
-  pink.scale = 0.1;
-}
+    score = 0;
+   }
 
-function redBalloon() {
-  red = createSprite(0, Math.round(random(20, 370)), 10, 10);
-  red.addImage(red_balloonImage);
-  //red.addImage(blue_balloonImage);
-  red.velocityX = 3;
-  red.lifetime = 150;
-  red.scale = 0.1;
-}
+   
+function spawnObstacles(){
+    if (frameCount % 70 == 0){
 
-function redBalloon2() {
-  var select_balloon = Math.round(random(1,4));
-  red = createSprite(0, Math.round(random(20, 370)), 10, 10);
-  if(select_balloon == 1) {
-    red.addImage(red_balloonImage);
-  } else if (select_balloon == 2) {
-    red.addImage(green_balloonImage);
-  } else if (select_balloon == 3) {
-    red.addImage(blue_balloonImage);
-  } else {
-    red.addImage(pink_balloonImage);
-  }
-  red.velocityX = 3;
-  red.lifetime = 150;
-  red.scale = 0.1;
-}
+        
+      var obstacle = createSprite(girl.x + Math.round(random(80, 100)), girl.y + Math.round(random(-50, 50)));
+      //obstacle.velocityX = -5;
 
-function greenBalloon() {
-  green = createSprite(0,Math.round(random(20, 370)), 10, 10);
-  green.addImage(green_balloonImage);
-  green.velocityX = 3;
-  green.lifetime = 150;
-  green.scale = 0.1;
-}
+       //assign scale and lifetime to the obstacle           
+       obstacle.scale = 0.2;
+       obstacle.lifetime = 50;
+      
+      //add each obstacle to the group
+       obstaclesGroup.add(obstacle);
+       score++;
+    }
+   }
 
-function blueBalloon() {
-  blue = createSprite(0,Math.round(random(20, 370)), 10, 10);
-  blue.addImage(blue_balloonImage);
-  blue.velocityX = 3;
-  blue.lifetime = 150;
-  blue.scale = 0.1;
+   function stopGirl(){
+    var player1 = createSprite(girl.x,girl.y);
+    player1.scale = 0.17;
+
+    player1.addAnimation("opponentPlayer1",girl_stop);
+    //player1.setLifetime=30;
+    stopCG.add(player1);
 }
 
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-function blueBalloon() {
-  //write code for spwaning blue balloons
-}
-
-function greenBalloon() {
-  //write code for spwaning green balloons
-}
-
-function pinkBalloon() {
-  //write code for spwaning pink balloons
-}
